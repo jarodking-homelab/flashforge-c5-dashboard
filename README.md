@@ -74,6 +74,10 @@ The printer's HTTP API is undocumented. These rules are implemented in `server.p
 | Pause | Start print with tool→slot mapping, upload |
 | Light on/off | Material-slot editing, camera on/off, "bed cleared" |
 
+## Authorship
+
+Conceived, specified and hardware-tested by Jarod King. Implemented with Claude (Anthropic) via Claude Code: backend, frontend, protocol research and documentation. Commits co-authored by Claude are marked in the history. Protocol knowledge credits: GhostTypes (see [Credits](#credits)).
+
 ## Credits
 
 - Protocol details for the Creator 5 come from [GhostTypes/ff-5mp-api-py](https://github.com/GhostTypes/ff-5mp-api-py) and [GhostTypes/flashforge-emulator-v2](https://github.com/GhostTypes/flashforge-emulator-v2), which document behaviour verified on real hardware.
