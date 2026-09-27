@@ -1,0 +1,6 @@
+{
+  "host": "192.168.1.50",
+  "serialNumber": "YOUR_PRINTER_SERIAL",
+  "checkCode": "YOUR_CHECK_CODE",
+  "port": 80
+}

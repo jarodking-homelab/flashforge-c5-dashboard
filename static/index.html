@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator 5 Pro</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%2338bdf8' d='M4 3h16v4H4zM6 8h12l-2 7H8zM9 16h6v2H9zM7 19h10v2H7z'/></svg>">
+<link rel="stylesheet" href="/static/vendor/uPlot.min.css?v={{v}}">
+<link rel="stylesheet" href="/static/style.css?v={{v}}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="dot" id="conn-dot" title="connection"></span>
+    <strong id="printer-name">Creator 5 Pro</strong>
+    <span class="chip" id="status-chip">…</span>
+  </div>
+  <div class="top-actions">
+    <button class="btn" id="btn-pause" data-job="pause">Pause</button>
+    <button class="btn" id="btn-resume" data-job="resume">Resume</button>
+    <button class="btn danger" id="btn-cancel" data-job="cancel">Cancel</button>
+    <button class="btn ghost" id="btn-light" title="Toggle chamber light">💡 Light</button>
+    <button class="btn ghost" id="btn-theme" title="Toggle theme">◐</button>
+    <button class="btn ghost" id="btn-layout" title="Expand / collapse all cards">⇕</button>
+  </div>
+</header>
+
+<div class="banner" id="offline-banner" hidden>Printer not responding. Showing last known state.</div>
+
+<main class="grid">
+
+  <!-- ===== Print status ===== -->
+  <section class="card" data-card="status">
+    <h2 class="card-h">Print Status</h2>
+    <div class="card-b">
+      <div class="job">
+        <img id="job-thumb" class="thumb" alt="">
+        <div class="job-info">
+          <div class="job-file" id="job-file">No active job</div>
+          <div class="progress"><div class="bar" id="job-bar"></div><span id="job-pct">0%</span></div>
+          <div class="kv3">
+            <div><label>Layer</label><span id="job-layer">–</span></div>
+            <div><label>Elapsed</label><span id="job-elapsed">–</span></div>
+            <div><label>Remaining</label><span id="job-remaining">–</span></div>
+            <div><label>ETA</label><span id="job-eta">–</span></div>
+            <div><label>Speed</label><span id="job-speed">–</span></div>
+            <div><label>Z offset</label><span id="job-z">–</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="row gap">
+        <button class="btn" data-job="pause">Pause</button>
+        <button class="btn" data-job="resume">Resume</button>
+        <button class="btn danger" data-job="cancel">Cancel</button>
+        <button class="btn ghost" id="btn-clear-platform" title="Tell the printer the bed has been cleared">Bed cleared</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Camera ===== -->
+  <section class="card" data-card="camera" id="cam-card">
+    <h2 class="card-h">Camera <span class="sub" id="cam-note"></span>
+      <span class="spacer"></span>
+      <span class="seg small" id="cam-size" title="Card width">
+        <button data-size="1">Normal</button><button data-size="2">Wide</button><button data-size="full">Full</button>
+      </span>
+    </h2>
+    <div class="card-b">
+      <div class="cam-wrap" id="cam-wrap">
+        <img id="cam" alt="camera stream">
+        <div class="cam-off" id="cam-off" hidden>Camera paused. <button class="btn" id="cam-start">Start</button></div>
+      </div>
+      <div class="row gap wrap">
+        <button class="btn ghost" id="cam-toggle">Pause view</button>
+        <button class="btn ghost" id="cam-full">Fullscreen</button>
+        <a class="btn ghost" id="cam-snap" href="/camera/snapshot" download="printer-snapshot.jpg">Snapshot</a>
+        <button class="btn ghost" id="cam-rot">Rotate</button>
+        <button class="btn ghost" id="cam-flip">Flip</button>
+        <span class="spacer"></span>
+        <button class="btn ghost" id="cam-power-on" title="Turn the printer's camera on">Cam on</button>
+        <button class="btn ghost" id="cam-power-off" title="Turn the printer's camera off">Cam off</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Temperatures ===== -->
+  <section class="card" data-card="temps">
+    <h2 class="card-h">Temperatures</h2>
+    <div class="card-b">
+      <div class="row gap wrap presets" id="preset-bar"></div>
+      <table class="temps">
+        <thead><tr><th>Heater</th><th>Actual</th><th>Target</th><th>Set</th><th></th></tr></thead>
+        <tbody id="temp-rows"></tbody>
+      </table>
+      <p class="hint">Enter 0 to turn a heater off. Tool limits 0–300 °C, bed 0–110 °C, chamber 0–65 °C.</p>
+    </div>
+  </section>
+
+  <!-- ===== Temperature graph ===== -->
+  <section class="card wide" data-card="chart">
+    <h2 class="card-h">Temperature History</h2>
+    <div class="card-b">
+      <div class="row gap wrap">
+        <div class="seg" id="range-seg">
+          <button data-range="900">15m</button><button data-range="3600" class="on">1h</button><button data-range="21600">6h</button><button data-range="86400">24h</button><button data-range="604800">7d</button><button data-range="2592000">30d</button>
+        </div>
+        <label class="check"><input type="checkbox" id="show-targets" checked> Targets</label>
+        <label class="check"><input type="checkbox" id="show-idle-tools"> Idle tools</label>
+        <label class="check"><input type="checkbox" id="show-fans"> Fans / speed</label>
+      </div>
+      <div id="temp-chart" class="chart"></div>
+    </div>
+  </section>
+
+  <!-- ===== Toolheads & material station ===== -->
+  <section class="card" data-card="tools">
+    <h2 class="card-h">Toolheads &amp; Material Station</h2>
+    <div class="card-b">
+      <div class="lanes" id="lanes"></div>
+      <p class="hint">Click a lane to set its material and colour. The printer only shows its 24 built-in colours.</p>
+    </div>
+  </section>
+
+  <!-- ===== Tune ===== -->
+  <section class="card" data-card="tune">
+    <h2 class="card-h">Tune <span class="sub" id="tune-note"></span></h2>
+    <div class="card-b">
+      <div class="tune-row" data-tune="speed" data-step="5" data-min="10" data-max="300" data-unit="%">
+        <label>Speed</label>
+        <button class="btn step" data-d="-1" title="Decrease">−</button>
+        <input type="range">
+        <button class="btn step" data-d="1" title="Increase">+</button>
+        <output></output>
+      </div>
+      <div class="tune-row" data-tune="coolingFan" data-step="5" data-min="0" data-max="100" data-unit="%">
+        <label>Part cooling fan</label>
+        <button class="btn step" data-d="-1" title="Decrease">−</button>
+        <input type="range">
+        <button class="btn step" data-d="1" title="Increase">+</button>
+        <output></output>
+      </div>
+      <div class="tune-row" data-tune="chamberFan" data-step="5" data-min="0" data-max="100" data-unit="%">
+        <label>Chamber fan</label>
+        <button class="btn step" data-d="-1" title="Decrease">−</button>
+        <input type="range">
+        <button class="btn step" data-d="1" title="Increase">+</button>
+        <output></output>
+      </div>
+      <div class="tune-row z" data-tune="zOffset" data-min="-2" data-max="2" data-unit=" mm">
+        <label>Z offset</label>
+        <div class="row gap wrap zsteps">
+          <button class="btn step" data-z="-0.05">−0.05</button><button class="btn step" data-z="-0.01">−0.01</button>
+          <button class="btn step" data-z="0.01">+0.01</button><button class="btn step" data-z="0.05">+0.05</button>
+          <button class="btn ghost step" data-z="reset" title="Stage 0.000">Zero</button>
+        </div>
+        <output></output>
+      </div>
+      <div class="row gap end tune-actions">
+        <span class="sub" id="tune-pending"></span>
+        <button class="btn ghost" id="tune-revert" disabled>Revert</button>
+        <button class="btn primary" id="tune-apply" disabled>Apply</button>
+      </div>
+      <p class="hint">Changes are staged until you press Apply, then sent together. The printer only accepts speed, fan and Z-offset changes while a print is running.</p>
+    </div>
+  </section>
+
+  <!-- ===== Sensors ===== -->
+  <section class="card" data-card="sensors">
+    <h2 class="card-h">Sensors &amp; Environment</h2>
+    <div class="card-b"><div class="tiles" id="sensor-tiles"></div></div>
+  </section>
+
+  <!-- ===== Machine ===== -->
+  <section class="card" data-card="machine">
+    <h2 class="card-h">Machine</h2>
+    <div class="card-b">
+      <div class="row gap wrap">
+        <label class="switch"><input type="checkbox" id="sw-light"><span></span> Chamber light</label>
+        <label class="switch" title="Not controllable on this printer (reported by the printer)"><input type="checkbox" id="sw-internal" disabled><span></span> Internal circulation</label>
+        <label class="switch" title="Not controllable on this printer (reported by the printer)"><input type="checkbox" id="sw-external" disabled><span></span> External filtration</label>
+      </div>
+      <dl class="info" id="machine-info"></dl>
+    </div>
+  </section>
+
+  <!-- ===== Files ===== -->
+  <section class="card wide" data-card="files">
+    <h2 class="card-h">Files on Printer</h2>
+    <div class="card-b">
+      <div class="row gap wrap">
+        <label class="btn" for="upload-input">Upload…</label>
+        <input type="file" id="upload-input" accept=".gcode,.gx,.3mf" hidden>
+        <button class="btn ghost" id="files-refresh">Refresh</button>
+        <input class="search" id="files-filter" placeholder="Filter files">
+        <span class="sub" id="upload-status"></span>
+      </div>
+      <div class="dropzone" id="dropzone">Drop a .gcode / .3mf file here to upload</div>
+      <div class="files" id="files"></div>
+    </div>
+  </section>
+
+  <!-- ===== Job history ===== -->
+  <section class="card wide" data-card="history">
+    <h2 class="card-h">Job History &amp; Statistics</h2>
+    <div class="card-b">
+      <div class="tiles" id="stat-tiles"></div>
+      <div class="chart-title">Printer utilization (hours/day)</div>
+      <div id="util-chart" class="chart small"></div>
+      <table class="jobs">
+        <thead><tr><th></th><th>File</th><th>Started</th><th>Duration</th><th>Result</th><th></th></tr></thead>
+        <tbody id="job-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Console / events ===== -->
+  <section class="card" data-card="console">
+    <h2 class="card-h">Console / Events</h2>
+    <div class="card-b">
+      <div class="row gap wrap">
+        <select id="event-filter">
+          <option value="">All</option><option value="command">Commands</option><option value="status">Status changes</option><option value="print">Prints</option><option value="problem">Problems</option>
+        </select>
+        <button class="btn ghost" id="events-refresh">Refresh</button>
+      </div>
+      <div class="console" id="console"></div>
+    </div>
+  </section>
+
+  <!-- ===== Settings ===== -->
+  <section class="card" data-card="settings" data-default="closed">
+    <h2 class="card-h">Settings</h2>
+    <div class="card-b">
+      <h3>Temperature presets</h3>
+      <table class="presets-edit"><thead><tr><th>Name</th><th>Tool</th><th>Bed</th><th>Chamber</th><th></th></tr></thead><tbody id="preset-rows"></tbody></table>
+      <div class="row gap"><button class="btn ghost" id="preset-add">Add preset</button><button class="btn" id="preset-save">Save presets</button></div>
+
+      <h3>Notifications</h3>
+      <div id="notify-targets"></div>
+      <div class="row gap wrap">
+        <button class="btn ghost" id="notify-add">Add target</button>
+        <button class="btn" id="notify-save">Save</button>
+        <button class="btn ghost" id="notify-test">Send test</button>
+        <label class="check"><input type="checkbox" id="browser-notify"> Browser notifications (this device)</label>
+      </div>
+      <p class="hint">"ntfy" posts a plain-text message to an ntfy topic URL. "webhook" posts JSON <code>{event,title,message,printer,ts}</code>.</p>
+    </div>
+  </section>
+</main>
+
+<!-- Print dialog -->
+<dialog id="print-dlg">
+  <form method="dialog" class="dlg">
+    <h3>Start print</h3>
+    <div class="dlg-file"><img id="pd-thumb" class="thumb" alt=""><div><strong id="pd-name"></strong><div class="sub" id="pd-meta"></div></div></div>
+    <div id="pd-mapping"></div>
+    <label class="check"><input type="checkbox" id="pd-level" checked> Bed leveling before print</label>
+    <label class="check"><input type="checkbox" id="pd-flow"> Flow calibration</label>
+    <label class="check"><input type="checkbox" id="pd-timelapse"> Time-lapse video</label>
+    <div class="row gap end"><button class="btn ghost" value="cancel">Cancel</button><button class="btn primary" value="ok" id="pd-go">Print</button></div>
+  </form>
+</dialog>
+
+<!-- Upload dialog -->
+<dialog id="upload-dlg">
+  <form method="dialog" class="dlg">
+    <h3>Upload <span id="ud-name"></span></h3>
+    <label class="check"><input type="checkbox" id="ud-now"> Start printing after upload</label>
+    <label class="check"><input type="checkbox" id="ud-level" checked> Bed leveling before print</label>
+    <label class="check"><input type="checkbox" id="ud-flow"> Flow calibration</label>
+    <label class="check"><input type="checkbox" id="ud-timelapse"> Time-lapse video</label>
+    <label class="check"><input type="checkbox" id="ud-matl" checked> Uses material station</label>
+    <label>Tools used in file <select id="ud-tools"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+    <div class="row gap end"><button class="btn ghost" value="cancel">Cancel</button><button class="btn primary" value="ok">Upload</button></div>
+  </form>
+</dialog>
+
+<!-- Slot dialog -->
+<dialog id="slot-dlg">
+  <form method="dialog" class="dlg">
+    <h3>Tool / slot <span id="sd-slot"></span></h3>
+    <label>Material <input id="sd-material" list="materials" maxlength="16"></label>
+    <datalist id="materials"><option>PLA</option><option>PLA+</option><option>SILK</option><option>PETG</option><option>ABS</option><option>ASA</option><option>TPU</option><option>PA</option><option>PC</option><option>PVA</option></datalist>
+    <div class="palette" id="sd-palette"></div>
+    <div class="row gap end"><button class="btn ghost" value="cancel">Cancel</button><button class="btn primary" value="ok">Save</button></div>
+  </form>
+</dialog>
+
+<!-- Confirm dialog -->
+<dialog id="confirm-dlg">
+  <form method="dialog" class="dlg">
+    <h3 id="cf-title">Are you sure?</h3>
+    <p id="cf-text"></p>
+    <div class="row gap end"><button class="btn ghost" value="cancel">No</button><button class="btn danger" value="ok">Yes</button></div>
+  </form>
+</dialog>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/static/vendor/uPlot.iife.min.js?v={{v}}"></script>
+<script src="/static/app.js?v={{v}}"></script>
+</body>
+</html>
