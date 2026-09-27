@@ -4,7 +4,7 @@ A self-hosted, Fluidd/Mainsail-style web dashboard for the **FlashForge Creator 
 
 In LAN-only mode the FlashForge app and Orca's default device view stop working. This dashboard talks to the printer's local HTTP API (port 8898) and camera (port 8080) directly and gives you live status, history, the camera and the controls the firmware exposes, with no cloud and no firmware modification.
 
-> **Status:** in daily use on a Creator 5 Pro (firmware 1.9.9). Monitoring, camera, history, file list, thumbnails and pause are verified on hardware. Some controls are implemented from protocol documentation but **not yet verified on hardware**; see [Tested vs untested](#tested-vs-untested).
+> **Status:** in daily use on a Creator 5 Pro (firmware 1.9.9). Monitoring, camera, history, file list, thumbnails, pause and the light are verified on hardware. Some controls are implemented from protocol documentation but **not yet verified on hardware**; see [Tested vs untested](#tested-vs-untested).
 
 ## Features
 
@@ -68,11 +68,11 @@ The printer's HTTP API is undocumented. These rules are implemented in `server.p
 
 | Verified on hardware | Implemented, not yet verified |
 |---|---|
-| Status, SSE, history, metrics | Resume, cancel, light on/off |
+| Status, SSE, history, metrics | Resume, cancel |
 | Camera relay and snapshot | Temperature targets (tools/bed/chamber) |
 | File list and thumbnails | Speed / fan / Z-offset **Apply** |
 | Pause | Start print with tool→slot mapping, upload |
-| | Material-slot editing, camera on/off, "bed cleared" |
+| Light on/off | Material-slot editing, camera on/off, "bed cleared" |
 
 ## Credits
 
