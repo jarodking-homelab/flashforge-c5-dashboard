@@ -1,0 +1,5 @@
+# Test and lint tools for the pipeline. aiohttp matches Debian 13's python3-aiohttp,
+# which is what the service runs on in production (CT105).
+aiohttp==3.11.16
+pytest==8.3.5
+ruff==0.11.13

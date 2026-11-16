@@ -1,0 +1,9 @@
+line-length = 120
+target-version = "py311"
+
+[lint]
+# E/W style, F pyflakes, B likely bugs, S security (bandit rules)
+select = ["E", "W", "F", "B", "S"]
+
+[lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is the point of a test
