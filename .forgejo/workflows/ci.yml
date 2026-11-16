@@ -1,0 +1,67 @@
+# printer-dash pipeline (Forgejo Actions, local runner). The work is in ci/*.sh so the same
+# commands run by hand. No external actions: checkout is plain git with the job's own token.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Lint and tests
+    runs-on: docker
+    container:
+      image: python:3.13-alpine
+    steps:
+      - name: Check out (files only)
+        env:
+          CI_TOKEN: ${{ github.token }}
+        run: |
+          wget -q --header "Authorization: token $CI_TOKEN" -O /tmp/src.tar.gz \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/archive/${{ github.sha }}.tar.gz"
+          tar -xzf /tmp/src.tar.gz --strip-components 1
+      - name: Lint and test
+        run: sh ci/test.sh
+
+  secrets:
+    name: Secret scan
+    runs-on: docker
+    container:
+      image: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    steps:
+      - name: Check out (whole history)
+        env:
+          CI_TOKEN: ${{ github.token }}
+        run: |
+          git init -q .
+          git remote add origin "${{ github.server_url }}/${{ github.repository }}.git"
+          auth=$(printf 'x-access-token:%s' "$CI_TOKEN" | base64 | tr -d '\n')
+          git -c "http.extraheader=Authorization: Basic $auth" fetch -q origin "${{ github.sha }}"
+          git checkout -q FETCH_HEAD
+      - name: Look for committed secrets
+        run: |
+          gitleaks git . --redact --no-banner -v --log-opts="HEAD" 2>&1 | tee /tmp/gitleaks.log
+          # a scan that looked at nothing must not count as a pass
+          if grep -q ' 0 commits scanned' /tmp/gitleaks.log; then echo "No commits were scanned"; exit 1; fi
+          if ! grep -q 'no leaks found' /tmp/gitleaks.log; then exit 1; fi
+
+  ticket-id:
+    name: Ticket id in commit messages
+    runs-on: docker
+    container:
+      image: python:3.13-alpine
+    steps:
+      - name: Check out (this branch and main)
+        env:
+          CI_TOKEN: ${{ github.token }}
+        run: |
+          apk add --no-cache git >/dev/null
+          git init -q .
+          git remote add origin "${{ github.server_url }}/${{ github.repository }}.git"
+          auth=$(printf 'x-access-token:%s' "$CI_TOKEN" | base64 | tr -d '\n')
+          git -c "http.extraheader=Authorization: Basic $auth" fetch -q origin \
+            "${{ github.sha }}" "+refs/heads/main:refs/remotes/origin/main"
+          git checkout -q "${{ github.sha }}"
+      - name: Each new commit names its ticket (hl-xxx)
+        run: sh ci/ticket-id.sh origin/main

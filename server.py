@@ -145,7 +145,7 @@ class Printer:
         try:
             data = json.loads(text)
         except ValueError:
-            raise PrinterError(f"{path}: HTTP {r.status}, non-JSON reply")
+            raise PrinterError(f"{path}: HTTP {r.status}, non-JSON reply") from None
         return data
 
     async def detail(self):
@@ -207,7 +207,7 @@ class Printer:
         try:
             data = json.loads(text)
         except ValueError:
-            raise PrinterError(f"upload: HTTP {r.status}, non-JSON reply")
+            raise PrinterError(f"upload: HTTP {r.status}, non-JSON reply") from None
         if data.get("code") != 0:
             raise PrinterError(f"upload: {data.get('message')} (code {data.get('code')})")
         return data
@@ -521,7 +521,8 @@ async def api_history(request):
     cols = ["t0", "t1", "t2", "t3", "tt0", "tt1", "tt2", "tt3", "bed", "bed_t", "chamber", "chamber_t",
             "chamber_fan", "cooling_fan", "speed", "tvoc"]
     rows = dash(request).store.db.execute(
-        f"SELECT (ts/{bucket})*{bucket} AS b, " + ", ".join(f"AVG({c})" for c in cols) +
+        # Only a clamped integer and the fixed column list above go into the SQL text.
+        f"SELECT (ts/{bucket})*{bucket} AS b, " + ", ".join(f"AVG({c})" for c in cols) +  # noqa: S608
         " FROM samples WHERE ts >= ? GROUP BY b ORDER BY b", (int(time.time()) - since,)).fetchall()
     out = {"ts": [r[0] for r in rows], "bucket": bucket}
     for i, c in enumerate(cols):
@@ -533,7 +534,8 @@ async def api_history(request):
 async def api_utilization(request):
     days = max(1, min(int(request.query.get("days", 30)), SAMPLE_RETENTION_DAYS))
     rows = dash(request).store.db.execute(
-        "SELECT date(ts, 'unixepoch', 'localtime') d, "
+        # SAMPLE_SECONDS is a constant; the day limit is a bound parameter.
+        "SELECT date(ts, 'unixepoch', 'localtime') d, "  # noqa: S608
         f"SUM(CASE WHEN status='printing' THEN {SAMPLE_SECONDS} ELSE 0 END), "
         f"SUM(CASE WHEN status IN ('pause','paused','pausing') THEN {SAMPLE_SECONDS} ELSE 0 END), "
         f"COUNT(*)*{SAMPLE_SECONDS} FROM samples WHERE ts >= ? GROUP BY d ORDER BY d",
@@ -547,7 +549,7 @@ async def api_jobs(request):
         "SELECT id, file, started, ended, result, progress, layers, est_seconds, filament_g, thumb IS NOT NULL "
         "FROM jobs ORDER BY id DESC LIMIT 200").fetchall()
     keys = ["id", "file", "started", "ended", "result", "progress", "layers", "estSeconds", "filamentG", "hasThumb"]
-    return web.json_response({"jobs": [dict(zip(keys, r)) for r in rows]})
+    return web.json_response({"jobs": [dict(zip(keys, r, strict=False)) for r in rows]})
 
 
 @routes.get("/api/jobs/{id}/thumb")
@@ -569,7 +571,7 @@ async def api_events(request):
     limit = min(int(request.query.get("limit", 200)), 1000)
     rows = dash(request).store.db.execute(
         "SELECT ts, kind, message, source FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-    return web.json_response({"events": [dict(zip(["ts", "kind", "message", "source"], r)) for r in rows]})
+    return web.json_response({"events": [dict(zip(["ts", "kind", "message", "source"], r, strict=False)) for r in rows]})
 
 
 @routes.get("/api/files")
@@ -870,7 +872,7 @@ async def metrics(request):
     if s:
         lines.append("# HELP printer_nozzle_temp_celsius Nozzle temperature per tool")
         lines.append("# TYPE printer_nozzle_temp_celsius gauge")
-        for i, (t, tt) in enumerate(zip(s.get("nozzleTemps") or [], s.get("nozzleTargetTemps") or [])):
+        for i, (t, tt) in enumerate(zip(s.get("nozzleTemps") or [], s.get("nozzleTargetTemps") or [], strict=False)):
             lines.append(f'printer_nozzle_temp_celsius{{tool="T{i}"}} {float(t)}')
             lines.append(f'printer_nozzle_target_celsius{{tool="T{i}"}} {float(tt)}')
         g("bed_temp_celsius", s.get("platTemp"), help_="Bed temperature")
@@ -923,7 +925,8 @@ def main():
     app.router.add_static("/static/", STATIC_DIR, append_version=True)
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
-    web.run_app(app, host="0.0.0.0", port=int(cfg.get("port", 80)), access_log=None)
+    # Listens on every interface on purpose: it is a LAN dashboard, opened from other machines.
+    web.run_app(app, host="0.0.0.0", port=int(cfg.get("port", 80)), access_log=None)  # noqa: S104
 
 
 if __name__ == "__main__":
